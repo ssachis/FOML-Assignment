@@ -5,7 +5,8 @@ const API = import.meta.env.VITE_API_URL || "http://localhost:4000";
 async function api(path, { method = "GET", body, token } = {}) {
   const res = await fetch(API + path, {
     method,
-    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    credentials: "include", // session lives in an httpOnly cookie; JS never sees the token
+    headers: { "Content-Type": "application/json", "X-Requested-With": "fetch" },
     body: body ? JSON.stringify(body) : undefined,
   });
   if (res.status === 204) return null;
@@ -29,7 +30,7 @@ function Field({ label, ...props }) {
   );
 }
 
-function AuthForm({ mode, onLogin, switchTo }) {
+function AuthForm({ mode, onLogin, notice, switchTo }) {
   const [f, setF] = useState({ username: "", email: "", password: "" });
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -44,8 +45,8 @@ function AuthForm({ mode, onLogin, switchTo }) {
       if (isReg) {
         await api("/api/auth/register", { method: "POST", body: { username: f.username, password: f.password, ...(f.email ? { email: f.email } : {}) } });
       }
-      const { access_token } = await api("/api/auth/login", { method: "POST", body: { username: f.username, password: f.password } });
-      onLogin(access_token);
+      await api("/api/auth/login", { method: "POST", body: { username: f.username, password: f.password } });
+      onLogin();
     } catch (e2) {
       setErr(e2.message);
     } finally {
@@ -56,6 +57,7 @@ function AuthForm({ mode, onLogin, switchTo }) {
   return (
     <form onSubmit={submit} className="card">
       <h2>{isReg ? "Create your account" : "Welcome back"}</h2>
+      {notice && <p className="success" role="status">{notice}</p>}
       <Field label="Username" value={f.username} onChange={set("username")} autoComplete="username" required minLength={3} />
       {isReg && <Field label="Email (optional)" type="email" value={f.email} onChange={set("email")} autoComplete="email" />}
       <Field label="Password" type="password" value={f.password} onChange={set("password")} autoComplete={isReg ? "new-password" : "current-password"} required minLength={isReg ? 8 : 1} />
@@ -82,9 +84,10 @@ function Home({ user }) {
   );
 }
 
-function Account({ user, token, onUser, onDeleted }) {
+function Account({ user, onUser, onDeleted, onPwChanged }) {
   const [email, setEmail] = useState(user.email || "");
   const [pw, setPw] = useState("");
+  const [cur, setCur] = useState("");
   const [confirm, setConfirm] = useState("");
   const [msg, setMsg] = useState({ kind: "", text: "" });
 
@@ -92,9 +95,9 @@ function Account({ user, token, onUser, onDeleted }) {
     setMsg({ kind: "", text: "" });
     try {
       const u = await api(`/api/users/${user.id}`, { method: "PATCH", body, token });
+      if (body.password) { onPwChanged(); return; }
       onUser(u);
       setMsg({ kind: "ok", text: okText });
-      setPw("");
     } catch (e) {
       setMsg({ kind: "err", text: e.message });
     }
@@ -116,7 +119,8 @@ function Account({ user, token, onUser, onDeleted }) {
           <Field label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           <button className="primary">Save email</button>
         </form>
-        <form onSubmit={(e) => { e.preventDefault(); patch({ password: pw }, "Password updated."); }}>
+        <form onSubmit={(e) => { e.preventDefault(); patch({ password: pw, current_password: cur }, "Password updated."); }}>
+          <Field label="Current password" type="password" value={cur} onChange={(e) => setCur(e.target.value)} required autoComplete="current-password" />
           <Field label="New password" type="password" value={pw} onChange={(e) => setPw(e.target.value)} minLength={8} required autoComplete="new-password" />
           <button className="primary">Change password</button>
         </form>
@@ -133,23 +137,23 @@ function Account({ user, token, onUser, onDeleted }) {
 }
 
 export default function App() {
-  const [token, setToken] = useState(() => localStorage.getItem("token"));
   const [user, setUser] = useState(null);
   const [view, setView] = useState("login");
-  const [ready, setReady] = useState(!token);
+  const [ready, setReady] = useState(false);
+  const [notice, setNotice] = useState("");
 
-  const logout = () => { localStorage.removeItem("token"); setToken(null); setUser(null); setView("login"); };
-  const login = (t) => { localStorage.setItem("token", t); setToken(t); setView("home"); };
+  const load = () =>
+    api("/api/auth/me")
+      .then((u) => { setUser(u); setView((v) => (v === "login" || v === "register" ? "home" : v)); })
+      .catch(() => setUser(null));
+  useEffect(() => { load().finally(() => setReady(true)); }, []);
 
-  useEffect(() => {
-    if (!token) { setReady(true); return; }
-    api("/api/auth/me", { token })
-      .then((u) => { setUser(u); setReady(true); setView((v) => (v === "login" || v === "register" ? "home" : v)); })
-      .catch(logout);
-  }, [token]);
+  const clear = (msg = "") => { setUser(null); setView("login"); setNotice(msg); };
+  const logout = () => api("/api/auth/logout", { method: "POST" }).catch(() => {}).finally(() => clear());
+  const login = () => { setNotice(""); load(); };
 
   if (!ready) return null;
-  const authed = token && user;
+  const authed = !!user;
 
   return (
     <div className="shell">
@@ -166,9 +170,9 @@ export default function App() {
             <button onClick={logout}>Log out</button>
           </nav>
         )}
-        {!authed && <AuthForm key={view} mode={view === "register" ? "register" : "login"} onLogin={login} switchTo={() => setView(view === "register" ? "login" : "register")} />}
+        {!authed && <AuthForm key={view} mode={view === "register" ? "register" : "login"} onLogin={login} notice={notice} switchTo={() => setView(view === "register" ? "login" : "register")} />}
         {authed && view === "home" && <Home user={user} />}
-        {authed && view === "account" && <Account user={user} token={token} onUser={setUser} onDeleted={logout} />}
+        {authed && view === "account" && <Account user={user} onUser={setUser} onDeleted={logout} onPwChanged={() => clear("Password changed. Log in again.")} />}
       </main>
     </div>
   );

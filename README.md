@@ -36,4 +36,11 @@ With the backend running: `cd backend && python test_api.py`
 - **Hashing:** argon2id via `argon2-cffi`. Login does the same work and returns the same message for unknown users and wrong passwords.
 - **Tokens:** JWT (HS256), 60 min expiry. Every auth failure is 401.
 - **CORS:** only `FRONTEND_ORIGIN` is allowed.
-# FOML-Assignment
+
+## Security measures
+- Passwords: argon2id. Changing a password requires the current one.
+- Brute force: 5 failed logins (or current-password guesses) per IP+username in 15 minutes returns 429.
+- Revocation: each user has a `token_version`; logout and password change invalidate all existing tokens.
+- Browser session: httpOnly, SameSite=Lax cookie (JS cannot read it). Cookie-authenticated writes also need an `X-Requested-With` header (CSRF defense). API clients can use `Authorization: Bearer`.
+- `JWT_SECRET` must be 32+ chars. Responses set `nosniff`, `X-Frame-Options: DENY`, `no-store`.
+- Known limits: the rate limiter is in memory (resets on restart); no email verification or password reset flow.

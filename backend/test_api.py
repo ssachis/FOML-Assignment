@@ -60,11 +60,22 @@ check(f"Rule 3: cross-account refused identically {codes}", len(set(codes.values
 check("victim untouched", call("GET", f"/api/users/{idb}", token=tb)[1]["email"] is None)
 
 check("PATCH own email", call("PATCH", f"/api/users/{ida}", {"email": f"new_{a}@x.com"}, token=ta)[1]["email"] == f"new_{a}@x.com")
-check("PATCH password", call("PATCH", f"/api/users/{ida}", {"password": "AnotherPass123!"}, token=ta)[0] == 200)
-check("login with new pw", call("POST", "/api/auth/login", {"username": a, "password": "AnotherPass123!"})[0] == 200)
+newpw = "AnotherPass123!"
+url = f"/api/users/{ida}"
+check("PATCH password without current -> 422", call("PATCH", url, {"password": newpw}, token=ta)[0] == 422)
+check("PATCH password wrong current -> 400", call("PATCH", url, {"password": newpw, "current_password": "wrong-wrong-1"}, token=ta)[0] == 400)
+check("PATCH password ok", call("PATCH", url, {"password": newpw, "current_password": pw}, token=ta)[0] == 200)
+check("old token revoked after pw change -> 401", call("GET", "/api/auth/me", token=ta)[0] == 401)
 check("old pw rejected", call("POST", "/api/auth/login", {"username": a, "password": pw})[0] == 401)
+ta = call("POST", "/api/auth/login", {"username": a, "password": newpw})[1]["access_token"]
+check("login with new pw", bool(ta))
 check("DELETE own 2xx", call("DELETE", f"/api/users/{ida}", token=ta)[0] in (200, 204))
 check("deleted user's token -> 401", call("GET", "/api/auth/me", token=ta)[0] == 401)
+check("logout -> 204", call("POST", "/api/auth/logout", token=tb)[0] == 204)
+check("token revoked after logout -> 401", call("GET", "/api/auth/me", token=tb)[0] == 401)
+tb = call("POST", "/api/auth/login", {"username": b, "password": pw})[1]["access_token"]
 call("DELETE", f"/api/users/{idb}", token=tb)
+rl = [call("POST", "/api/auth/login", {"username": f"nobody_{sfx}", "password": "bad-bad-bad"})[0] for _ in range(6)]
+check(f"login rate limit: 5x401 then 429 {rl}", rl[:5] == [401] * 5 and rl[5] == 429)
 check("NYUgrader can log in", call("POST", "/api/auth/login", {"username": "NYUgrader", "password": "Courant2026!"})[0] == 200)
 print("\nAll passed" if not fails else f"\n{fails} FAILED"); sys.exit(1 if fails else 0)
