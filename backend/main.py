@@ -45,6 +45,9 @@ ORIGINS = {o.strip() for o in os.getenv("FRONTEND_ORIGIN", "").split(",") if o.s
     "http://127.0.0.1:5173",
 }
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "0") == "1"  # set to 1 behind HTTPS
+COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "lax").lower()  # "none" when frontend and API are on different sites
+if COOKIE_SAMESITE == "none" and not COOKIE_SECURE:
+    raise RuntimeError("COOKIE_SAMESITE=none requires COOKIE_SECURE=1 (browsers reject it otherwise)")
 COOKIE_NAME = "session"
 TOKEN_TTL_MINUTES = 60
 FRESH_SECONDS = 300  # a token this young may change the password without re-typing it
@@ -277,7 +280,7 @@ def login(body: LoginIn, request: Request, response: Response):
     token = make_token(row["id"], sid)
     response.set_cookie(
         COOKIE_NAME, token, max_age=TOKEN_TTL_MINUTES * 60, httponly=True,
-        samesite="lax", secure=COOKIE_SECURE, path="/",
+        samesite=COOKIE_SAMESITE, secure=COOKIE_SECURE, path="/",
     )
     return {"access_token": token, "token": token, "token_type": "bearer"}
 
