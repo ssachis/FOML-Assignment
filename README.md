@@ -36,3 +36,4 @@ With the backend running: `cd backend && python test_api.py`
 - **Hashing:** argon2id via `argon2-cffi`. Login does the same work and returns the same message for unknown users and wrong passwords.
 - **Tokens:** JWT (HS256), 60 min expiry. Every auth failure is 401.
 - **CORS:** only `FRONTEND_ORIGIN` is allowed.
+# FOML-Assignment
