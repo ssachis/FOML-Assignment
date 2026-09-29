@@ -21,26 +21,26 @@ load_dotenv()
 DATABASE_URL = os.environ["DATABASE_URL"]
 
 def load_secret() -> str:
-"""JWT secret: env var if set, else a random one generated once into a git-ignored file."""
-s = os.getenv("JWT_SECRET", "")
-
-```
-if s:
-    if len(s) < 32:
-        raise RuntimeError("JWT_SECRET must be at least 32 characters")
+    """JWT secret: env var if set, else a random one generated once into a git-ignored file."""
+    s = os.getenv("JWT_SECRET", "")
+    
+    ```
+    if s:
+        if len(s) < 32:
+            raise RuntimeError("JWT_SECRET must be at least 32 characters")
+        return s
+    
+    f = Path(__file__).with_name(".jwt_secret")
+    
+    if f.exists():
+        return f.read_text().strip()
+    
+    s = secrets.token_hex(32)
+    f.write_text(s)
+    f.chmod(0o600)
+    
     return s
-
-f = Path(__file__).with_name(".jwt_secret")
-
-if f.exists():
-    return f.read_text().strip()
-
-s = secrets.token_hex(32)
-f.write_text(s)
-f.chmod(0o600)
-
-return s
-```
+    ```
 
 JWT_SECRET = load_secret()
 ISSUER = "nyu-a1"
