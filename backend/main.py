@@ -1,6 +1,8 @@
 import os
+import secrets
 import time
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Optional
 
 import jwt
@@ -13,26 +15,49 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from psycopg.rows import dict_row
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import AliasChoices, BaseModel, EmailStr, Field
 
 load_dotenv()
 DATABASE_URL = os.environ["DATABASE_URL"]
-JWT_SECRET = os.environ["JWT_SECRET"]
-if len(JWT_SECRET) < 32:
-    raise RuntimeError("JWT_SECRET must be at least 32 characters")
-FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
-COOKIE_SECURE = os.getenv("COOKIE_SECURE", "0") == "1"  # set to 1 when served over HTTPS
+
+
+def load_secret() -> str:
+    """JWT secret: env var if set, else a random one generated once into a git-ignored file,
+    so no signing secret ever has to be committed."""
+    s = os.getenv("JWT_SECRET", "")
+    if s:
+        if len(s) < 32:
+            raise RuntimeError("JWT_SECRET must be at least 32 characters")
+        return s
+    f = Path(__file__).with_name(".jwt_secret")
+    if f.exists():
+        return f.read_text().strip()
+    s = secrets.token_hex(32)
+    f.write_text(s)
+    f.chmod(0o600)
+    return s
+
+
+JWT_SECRET = load_secret()
+ISSUER = "nyu-a1"
+ORIGINS = {o.strip() for o in os.getenv("FRONTEND_ORIGIN", "").split(",") if o.strip()} | {
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+}
+COOKIE_SECURE = os.getenv("COOKIE_SECURE", "0") == "1"  # set to 1 behind HTTPS
 COOKIE_NAME = "session"
 TOKEN_TTL_MINUTES = 60
+FRESH_SECONDS = 300  # a token this young may change the password without re-typing it
 
-ph = PasswordHasher()  # argon2id by default
+# argon2id, RFC 9106 "low memory" profile (64 MiB, t=3, p=4). Above OWASP's minimum.
+ph = PasswordHasher(time_cost=3, memory_cost=65536, parallelism=4)
 DUMMY_HASH = ph.hash("dummy-password-for-timing")
-PUBLIC_COLS = "id, username, email, created_at"  # password_hash / token_version never returned
+PUBLIC_COLS = "id, username, email, created_at"  # the hash is never in any response
 
 app = FastAPI(title="NYU A1 API")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_ORIGIN],
+    allow_origins=sorted(ORIGINS),
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
@@ -44,6 +69,8 @@ async def security_headers(request: Request, call_next):
     resp = await call_next(request)
     resp.headers["X-Content-Type-Options"] = "nosniff"
     resp.headers["X-Frame-Options"] = "DENY"
+    resp.headers["Referrer-Policy"] = "no-referrer"
+    resp.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     resp.headers["Cache-Control"] = "no-store"
     return resp
 
@@ -63,8 +90,13 @@ def init_db():
                  password_hash TEXT NOT NULL,
                  created_at TIMESTAMPTZ DEFAULT now())"""
         )
-        # token_version lets us revoke all of a user's tokens (logout / password change)
-        conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0")
+        # One row per login. Deleting a row revokes exactly that token (logout, password change).
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS sessions (
+                 sid TEXT PRIMARY KEY,
+                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                 created_at TIMESTAMPTZ NOT NULL DEFAULT now())"""
+        )
 
 
 # ---------- brute-force protection (in-memory; resets on restart) ----------
@@ -78,9 +110,9 @@ def _recent(key):
     return _fails[key]
 
 
-def check_limit(key):
+def check_limit(key, limit=MAX_FAILS):
     ts = _recent(key)
-    if len(ts) >= MAX_FAILS:
+    if len(ts) >= limit:
         retry = int(WINDOW - (time.time() - ts[0])) + 1
         raise HTTPException(429, "Too many failed attempts. Try again later.", headers={"Retry-After": str(retry)})
 
@@ -93,7 +125,7 @@ def client_ip(request: Request):
     return request.client.host if request.client else "unknown"
 
 
-# ---------- error handling: never echo input (could contain passwords) ----------
+# ---------- errors: never echo input (could contain passwords) ----------
 @app.exception_handler(RequestValidationError)
 async def validation_handler(request: Request, exc: RequestValidationError):
     errs = [{"field": ".".join(str(p) for p in e["loc"][1:]), "message": e["msg"]} for e in exc.errors()]
@@ -107,20 +139,25 @@ async def unhandled(request: Request, exc: Exception):
 
 # ---------- schemas ----------
 class RegisterIn(BaseModel):
-    username: str = Field(min_length=3, max_length=32, pattern=r"^[A-Za-z0-9_.-]+$")
+    username: str = Field(min_length=3, max_length=64, pattern=r"^[A-Za-z0-9_.@+-]+$")
     password: str = Field(min_length=8, max_length=128)
     email: Optional[EmailStr] = None
 
 
 class LoginIn(BaseModel):
-    username: str = Field(max_length=64)
+    username: Optional[str] = Field(default=None, max_length=254)
+    email: Optional[str] = Field(default=None, max_length=254)
     password: str = Field(max_length=128)
 
 
 class UpdateIn(BaseModel):
     email: Optional[EmailStr] = None
-    password: Optional[str] = Field(default=None, min_length=8, max_length=128)
-    current_password: Optional[str] = Field(default=None, max_length=128)
+    password: Optional[str] = Field(
+        default=None, min_length=8, max_length=128, validation_alias=AliasChoices("password", "new_password")
+    )
+    current_password: Optional[str] = Field(
+        default=None, max_length=128, validation_alias=AliasChoices("current_password", "old_password")
+    )
 
 
 # ---------- auth ----------
@@ -128,9 +165,10 @@ def unauthorized():
     return HTTPException(401, "Not authenticated", headers={"WWW-Authenticate": "Bearer"})
 
 
-def make_token(uid: int, tv: int) -> str:
-    exp = datetime.now(timezone.utc) + timedelta(minutes=TOKEN_TTL_MINUTES)
-    return jwt.encode({"sub": str(uid), "tv": tv, "exp": exp}, JWT_SECRET, algorithm="HS256")
+def make_token(uid: int, sid: str) -> str:
+    now = datetime.now(timezone.utc)
+    claims = {"sub": str(uid), "sid": sid, "iss": ISSUER, "iat": now, "exp": now + timedelta(minutes=TOKEN_TTL_MINUTES)}
+    return jwt.encode(claims, JWT_SECRET, algorithm="HS256")
 
 
 def authenticate(request: Request, authorization: Optional[str]):
@@ -145,19 +183,28 @@ def authenticate(request: Request, authorization: Optional[str]):
         token, from_cookie = request.cookies[COOKIE_NAME], True
     if not token:
         raise unauthorized()
-    # CSRF defense for cookie auth: writes need a custom header, which forces a CORS preflight.
-    if from_cookie and request.method not in ("GET", "HEAD", "OPTIONS") and request.headers.get("x-requested-with") != "fetch":
-        raise HTTPException(403, "Missing CSRF header")
+    if from_cookie and request.method not in ("GET", "HEAD", "OPTIONS"):
+        # CSRF defense for cookie auth: custom header (forces a CORS preflight) + Origin allowlist.
+        origin = request.headers.get("origin")
+        if request.headers.get("x-requested-with") != "fetch" or (origin and origin not in ORIGINS):
+            raise HTTPException(403, "CSRF check failed")
     try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"], options={"require": ["exp", "sub", "tv"]})
-        uid, tv = int(payload["sub"]), int(payload["tv"])
+        p = jwt.decode(
+            token, JWT_SECRET, algorithms=["HS256"], issuer=ISSUER,
+            options={"require": ["exp", "iat", "iss", "sub", "sid"]},
+        )
+        uid, sid, iat = int(p["sub"]), str(p["sid"]), int(p["iat"])
     except (jwt.PyJWTError, ValueError, KeyError, TypeError):
         raise unauthorized()
     with get_conn() as conn:
-        row = conn.execute(f"SELECT {PUBLIC_COLS}, token_version FROM users WHERE id = %s", (uid,)).fetchone()
-    if not row or row["token_version"] != tv:  # deleted user or revoked token
+        row = conn.execute(
+            "SELECT u.id, u.username, u.email, u.created_at FROM users u "
+            "JOIN sessions s ON s.user_id = u.id WHERE u.id = %s AND s.sid = %s",
+            (uid, sid),
+        ).fetchone()
+    if not row:  # deleted user, logged out, or revoked
         raise unauthorized()
-    row.pop("token_version")
+    request.state.sid, request.state.iat = sid, iat
     return row
 
 
@@ -165,10 +212,12 @@ def current_user(request: Request, authorization: Optional[str] = Header(default
     return authenticate(request, authorization)
 
 
-def own_or_404(user_id: str, user: dict):
-    # Rule 3: someone else's id -> 404, same as an id that doesn't exist.
+def owned_user(user_id: str, user=Depends(current_user)):
+    # Rule 3: someone else's id -> 404, identical to a nonexistent id. Runs as a dependency,
+    # so it fires BEFORE body validation (an invalid PATCH body can't leak a different code).
     if str(user["id"]) != user_id:
         raise HTTPException(404, "Not found")
+    return user
 
 
 def clear_cookie(resp: Response):
@@ -185,22 +234,28 @@ def healthz():
 def register(body: RegisterIn):
     try:
         with get_conn() as conn:
-            user = conn.execute(
+            return conn.execute(
                 f"INSERT INTO users (username, email, password_hash) VALUES (%s, %s, %s) RETURNING {PUBLIC_COLS}",
                 (body.username, body.email, ph.hash(body.password)),
             ).fetchone()
     except psycopg.errors.UniqueViolation:
         raise HTTPException(409, "Username or email already in use")
-    return user
 
 
 @app.post("/api/auth/login")
 def login(body: LoginIn, request: Request, response: Response):
-    key = f"{client_ip(request)}|{body.username.lower()}"
-    check_limit(key)  # applies to unknown usernames too, so it leaks nothing
+    ident = body.username or body.email
+    if not ident:
+        raise HTTPException(422, "username is required")
+    ip = client_ip(request)
+    key, ipkey = f"{ip}|{ident.lower()}", f"ip|{ip}"
+    check_limit(key)  # also applies to unknown usernames, so it leaks nothing
+    check_limit(ipkey, 50)  # slows credential stuffing across many usernames
     with get_conn() as conn:
         row = conn.execute(
-            "SELECT id, password_hash, token_version FROM users WHERE username = %s", (body.username,)
+            "SELECT id, password_hash FROM users WHERE username = %s OR lower(email) = lower(%s) "
+            "ORDER BY (username = %s) DESC LIMIT 1",
+            (ident, ident, ident),
         ).fetchone()
     stored = row["password_hash"] if row else DUMMY_HASH
     try:
@@ -210,9 +265,16 @@ def login(body: LoginIn, request: Request, response: Response):
         ok = False
     if not ok:
         record_fail(key)
+        record_fail(ipkey)
         raise HTTPException(401, "Invalid username or password")
     _fails.pop(key, None)
-    token = make_token(row["id"], row["token_version"])
+    sid = secrets.token_hex(16)
+    with get_conn() as conn:
+        if ph.check_needs_rehash(row["password_hash"]):  # transparently upgrade old parameters
+            conn.execute("UPDATE users SET password_hash = %s WHERE id = %s", (ph.hash(body.password), row["id"]))
+        conn.execute("DELETE FROM sessions WHERE created_at < now() - interval '2 hours'")
+        conn.execute("INSERT INTO sessions (sid, user_id) VALUES (%s, %s)", (sid, row["id"]))
+    token = make_token(row["id"], sid)
     response.set_cookie(
         COOKIE_NAME, token, max_age=TOKEN_TTL_MINUTES * 60, httponly=True,
         samesite="lax", secure=COOKIE_SECURE, path="/",
@@ -222,10 +284,10 @@ def login(body: LoginIn, request: Request, response: Response):
 
 @app.post("/api/auth/logout", status_code=204)
 def logout(request: Request, authorization: Optional[str] = Header(default=None)):
-    try:  # revoke every token this user has; always clear the cookie
-        user = authenticate(request, authorization)
+    try:  # revoke this session only; always clear the cookie
+        authenticate(request, authorization)
         with get_conn() as conn:
-            conn.execute("UPDATE users SET token_version = token_version + 1 WHERE id = %s", (user["id"],))
+            conn.execute("DELETE FROM sessions WHERE sid = %s", (request.state.sid,))
     except HTTPException:
         pass
     resp = Response(status_code=204)
@@ -239,35 +301,34 @@ def me(user=Depends(current_user)):
 
 
 @app.get("/api/users/{user_id}")
-def read_user(user_id: str, user=Depends(current_user)):
-    own_or_404(user_id, user)
+def read_user(user=Depends(owned_user)):
     return user
 
 
 @app.patch("/api/users/{user_id}")
-def update_user(user_id: str, body: UpdateIn, request: Request, response: Response, user=Depends(current_user)):
-    own_or_404(user_id, user)
+def update_user(body: UpdateIn, request: Request, user=Depends(owned_user)):
     fields = body.model_dump(exclude_unset=True)
     sets, vals, pw_changed = [], [], False
     if "email" in fields:
         sets.append("email = %s")
         vals.append(fields["email"])
     if fields.get("password"):
-        if not fields.get("current_password"):
-            raise HTTPException(422, "current_password is required to change password")
-        key = f"{client_ip(request)}|pw{user['id']}"
-        check_limit(key)
-        with get_conn() as conn:
-            row = conn.execute("SELECT password_hash FROM users WHERE id = %s", (user["id"],)).fetchone()
-        try:
-            ph.verify(row["password_hash"], fields["current_password"])
-        except VerifyMismatchError:
-            record_fail(key)
-            raise HTTPException(400, "Current password is incorrect")
-        _fails.pop(key, None)
+        if fields.get("current_password"):
+            key = f"{client_ip(request)}|pw{user['id']}"
+            check_limit(key)
+            with get_conn() as conn:
+                row = conn.execute("SELECT password_hash FROM users WHERE id = %s", (user["id"],)).fetchone()
+            try:
+                ph.verify(row["password_hash"], fields["current_password"])
+            except VerifyMismatchError:
+                record_fail(key)
+                raise HTTPException(400, "Current password is incorrect")
+            _fails.pop(key, None)
+        elif time.time() - request.state.iat > FRESH_SECONDS:
+            # step-up: a stale token must prove knowledge of the current password
+            raise HTTPException(403, "Send current_password, or log in again, to change your password")
         sets.append("password_hash = %s")
         vals.append(ph.hash(fields["password"]))
-        sets.append("token_version = token_version + 1")  # revokes all existing tokens
         pw_changed = True
     if not sets:
         raise HTTPException(422, "Provide email or password")
@@ -276,18 +337,17 @@ def update_user(user_id: str, body: UpdateIn, request: Request, response: Respon
             updated = conn.execute(
                 f"UPDATE users SET {', '.join(sets)} WHERE id = %s RETURNING {PUBLIC_COLS}", (*vals, user["id"])
             ).fetchone()
+            if pw_changed:  # sign out every OTHER session; this one stays valid
+                conn.execute("DELETE FROM sessions WHERE user_id = %s AND sid <> %s", (user["id"], request.state.sid))
     except psycopg.errors.UniqueViolation:
         raise HTTPException(409, "Email already in use")
-    if pw_changed:
-        clear_cookie(response)
     return updated
 
 
 @app.delete("/api/users/{user_id}", status_code=204)
-def delete_user(user_id: str, user=Depends(current_user)):
-    own_or_404(user_id, user)
+def delete_user(user=Depends(owned_user)):
     with get_conn() as conn:
-        conn.execute("DELETE FROM users WHERE id = %s", (user["id"],))
+        conn.execute("DELETE FROM users WHERE id = %s", (user["id"],))  # sessions cascade
     resp = Response(status_code=204)
     clear_cookie(resp)
     return resp
