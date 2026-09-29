@@ -1,0 +1,5 @@
+.venv/
+node_modules/
+__pycache__/
+dist/
+# NOTE: .env files are intentionally committed (throwaway DB only) per assignment.
