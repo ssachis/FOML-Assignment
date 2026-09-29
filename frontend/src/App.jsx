@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 
-const API = import.meta.env.VITE_API_URL;
+// Dev: talk to the backend on :4000 (cross-origin, uses CORS). Production build: same-origin "/api/..."
+// (the host proxies it to the backend), so the session cookie is first-party.
+const API = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? `http://${window.location.hostname}:4000` : "");
 
 async function api(path, { method = "GET", body } = {}) {
   let res;

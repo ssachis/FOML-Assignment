@@ -9,7 +9,7 @@ A small accounts app: a FastAPI + Neon Postgres backend (register, login, view/u
 ## Environment
 - `backend/.env.example` lists every variable. `backend/.env` contains only `DATABASE_URL`, the connection string of a **throwaway** Neon database made for this assignment (nothing else uses it).
 - No signing secret is committed. On first start the backend generates a random `JWT_SECRET` into `backend/.jwt_secret` (git-ignored). You can override it with a `JWT_SECRET` env var.
-- `frontend/.env` is optional; the API URL defaults to `http://<current hostname>:4000`.
+- `frontend/.env` is intentionally empty. In development the app talks to `http://<current hostname>:4000`; a production build reads `VITE_API_URL` from the host's environment settings.
 
 ## Run the backend (terminal 1)
 ```bash
@@ -43,7 +43,13 @@ With the backend running: `cd backend && python test_api.py`
 - **Sessions:** JWT (HS256, 60 min, issuer checked) tied to a `sessions` row. Logout deletes that row; changing a password signs out every other session. Every auth failure is 401.
 - **Password change:** requires `current_password`; a token less than 5 minutes old may omit it (step-up rule), which keeps the API easy to script while a stale stolen token can't take over the account.
 - **Brute force:** 5 failures per IP+username (and 50 per IP) in 15 minutes gives 429.
-- **Browser session:** httpOnly, SameSite=Lax cookie; JS can't read it. Cookie-authenticated writes also need `X-Requested-With` and an allowed `Origin` (CSRF). API clients use `Authorization: Bearer`.
-- **CORS:** only the frontend origins (localhost / 127.0.0.1 on 5173) are allowed, with credentials.
+- **Browser session:** httpOnly cookie (SameSite=Lax locally, SameSite=None; Secure in the cross-site deployment); JS can't read it. Cookie-authenticated writes also need `X-Requested-With` and an allowed `Origin` (CSRF). API clients use `Authorization: Bearer`.
+- **CORS:** only known frontend origins are allowed, with credentials: localhost / 127.0.0.1 on 5173, plus anything in `FRONTEND_ORIGINS`.
 - **Headers:** `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `no-store`.
-- **Known limits:** the rate limiter is in memory (resets on restart); no email verification or password reset; cross-domain deployment would need `SameSite=None; Secure` cookies.
+- **Known limits:** the rate limiter is in memory (resets on restart); no email verification or password reset; on the deployed version (Vercel and Render are different sites) Safari and Brave block the cross-site cookie, so use Chrome/Firefox or run locally.
+
+## Optional: deployed version
+Local grading uses the instructions above and needs nothing deployed.
+- Frontend (Vercel): https://foml-assignment.vercel.app, with `VITE_API_URL` set in Vercel's environment settings.
+- Backend (Render): https://foml-assignment.onrender.com/healthz. Render env vars: `DATABASE_URL`, `JWT_SECRET`, `COOKIE_SECURE=1`, `COOKIE_SAMESITE=none`, `FRONTEND_ORIGINS=https://foml-assignment.vercel.app`.
+- The free API tier sleeps when idle, so the first request can take about a minute.
