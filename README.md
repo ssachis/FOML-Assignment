@@ -48,8 +48,4 @@ With the backend running: `cd backend && python test_api.py`
 - **Headers:** `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `no-store`.
 - **Known limits:** the rate limiter is in memory (resets on restart); no email verification or password reset; on the deployed version (Vercel and Render are different sites) Safari and Brave block the cross-site cookie, so use Chrome/Firefox or run locally.
 
-## Optional: deployed version
-Local grading uses the instructions above and needs nothing deployed.
-- Frontend (Vercel): https://foml-assignment.vercel.app, with `VITE_API_URL` set in Vercel's environment settings.
-- Backend (Render): https://foml-assignment.onrender.com/healthz. Render env vars: `DATABASE_URL`, `JWT_SECRET`, `COOKIE_SECURE=1`, `COOKIE_SAMESITE=none`, `FRONTEND_ORIGINS=https://foml-assignment.vercel.app`.
-- The free API tier sleeps when idle, so the first request can take about a minute.
+
