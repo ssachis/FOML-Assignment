@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const API = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:4000`;
+const API = import.meta.env.VITE_API_URL;
 
 async function api(path, { method = "GET", body } = {}) {
   let res;
