@@ -6,3 +6,5 @@ dist/
 .jwt_secret
 .DS_Store
 /.env
+
+.venv-tracker/
