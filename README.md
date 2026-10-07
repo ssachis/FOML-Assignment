@@ -120,3 +120,6 @@ python -m tracker.hackathons clear                  # remove them
 | DELETE | `/api/tracker/hackathons` | token, else 401 | Delete the caller's events |
 
 This tab is a snapshot you refresh, not an autonomous agent run. It does not touch the job-tracker tables.
+
+## Note on run timing
+`reports/run1.md` (2026-10-06 22:01 UTC) and `reports/run2.md` (2026-10-07 02:32 UTC) were produced only a few hours apart because of time constraints, not the required one day. The feed still changed between them (1 new, 7 still, 1 dropped). I will add a run at least one day later as `reports/run3.md` and `traces/run3.jsonl` and push it by October 9, 2026.

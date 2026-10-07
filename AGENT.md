@@ -1,7 +1,5 @@
 # AGENT.md
 
-> Sections marked **FILL IN** need numbers from your own trace and runs. Everything else describes the code as written.
-
 ## 1. Workflow vs. agent
 **The model decides:** which source/search to look at next, which postings to include, how to rank them, how to write the 1–2 sentence summary and the "fit" note, and whether a new posting is the same job as an `ALREADY_REPORTED` one (it only *proposes* that, see §3).
 
@@ -37,4 +35,4 @@ if s == 429:
 - 401/403/402 are terminal; timeouts, connection errors, 408 and 5xx are transient. (Tested in `python -m tracker.test_tracker`; also try a bogus `GROQ_API_KEY` and airplane mode.)
 
 ## 5. Budget
-**FILL IN** from your traces: tokens per run = last `total_tokens=` note in the trace; searches = Tavily credits column. Limits in `config.yaml` cap a run at 60,000 tokens, 10 steps, 8 fetches, 1 search. Groq's free-tier daily token limit for your model is on https://console.groq.com/docs/rate-limits; days until it runs out = daily limit ÷ tokens per run (per day, so with one run a day it only runs out if a single run exceeds it). Tavily's monthly credits ÷ (searches per run × runs per month) gives the second number. Check both against the live pages: I did not verify current limits.
+Run 1 used about 5,000 tokens and run 2 used 5,407 (3 model calls, 1 fetch), both with 0 Tavily credits. Limits in `config.yaml` cap a run at 60,000 tokens, 10 steps, 8 fetches and 1 search. Groq's free tier for `openai/gpt-oss-120b` is 200,000 tokens/day (TPD), 1,000 requests/day, 30 requests/min and 8,000 tokens/min (checked on console.groq.com/docs/rate-limits, Oct 2026). At 5,407 tokens per run that is about 36 runs per day, and even at the 60,000-token cap it is 3 runs per day, so running once a day Groq's daily cap never runs out. The limit I would hit first is the 8,000 tokens/minute cap: a normal run (about 5.4K tokens in about 10 s) fits, but two runs inside one minute, or one near my 60K budget, would get a per-minute 429, which my code treats as transient and retries with backoff. Tavily is not used on the normal path (0 credits per run); even if the 1-search cap were used every day that is about 30 credits/month, well under the free monthly allowance (reported as 1,000, which I have not verified). So with daily runs neither free tier runs out; my own `max_total_tokens` budget and Groq's per-minute cap are the binding limits. Run 2's second model call shows 0 tokens in the trace because no usage data was returned for it, so the 5,407 figure is the cumulative total on the last call.
