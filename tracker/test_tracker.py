@@ -140,7 +140,7 @@ by = {d["title"]: d["status"] for d in run2["developments"]}
 check("run2: feed re-fetched, seen article skipped", [f["status"] for f in run2["fetches"]] == ["fetched", "skipped_seen"])
 check("run2: new job is new, known job (new URL) is still", by == {"Data Engineer, ML Platform": "new", "Machine Learning Engineer": "still"})
 check("run2: known job did not create a duplicate development", len(store.devs) == 2)
-check("run2: source URL variant added to existing development", len(store.devs[1]["sources"]) == 2)
+check("run2: feed + both posting URLs kept as sources of the existing development", len(store.devs[1]["sources"]) == 3)
 check("run2 report sections in order", run2["report_md"].index("New since last run") < run2["report_md"].index("Still in top K") < run2["report_md"].index("Dropped"))
 
 LISTING[:] = LISTING[1:]  # first job disappears
@@ -172,6 +172,12 @@ try:
     check("bad key stops with a terminal error (no evidence to salvage)", False)
 except Terminal:
     check("bad key stops with a terminal error (no evidence to salvage)", calls["n"] == 1)
+
+d0 = run1["developments"][0]
+check("listing job: the verified feed is the first source", d0["sources"][0] == agent.norm_url(FEED))
+check("listing job: summary is written by the code from the listing, not by the model",
+      d0["summary"] != "s" and "Listed in" in d0["summary"] and d0["title"] in d0["summary"])
+check("listing job: fit is computed from your preferences", d0["fit"] != "f" and "matches" in d0["fit"])
 
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 raise SystemExit(1 if fails else 0)

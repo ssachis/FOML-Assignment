@@ -63,6 +63,19 @@ def compact(messages, cands, keep_last=1, max_pinned=40):
     return view
 
 
+def explain_fit(c, prefs):
+    """Why a posting matches, computed from the listing line and your preferences. Nothing is invented."""
+    title, loc = c["title"].lower(), c["location"].lower()
+    parts = []
+    for label, words, hay in (("title matches", prefs.get("titles_include", []), title),
+                              ("location matches", prefs.get("locations_include", []), loc),
+                              ("keywords", prefs.get("keywords_boost", []), f"{title} {loc}")):
+        hit = [w for w in words if w.lower() in hay]
+        if hit:
+            parts.append(f"{label} " + ", ".join(f"'{w}'" for w in hit))
+    return "; ".join(parts) or "passed your title and location filters"
+
+
 def now():
     return datetime.now(timezone.utc).isoformat()
 
@@ -219,6 +232,7 @@ def run(cfg, store, report_path=None, trace_path=None, llm_fn=llm.chat, fetch_fn
     reject_log = []
 
     # ---------- turn model output (or evidence so far) into verified jobs
+    cand_by_url = {norm_url(c["url"]): c for c in cands if c["url"]}
     jobs = []
     if report is not None:
         for j in report["jobs"]:
@@ -234,6 +248,11 @@ def run(cfg, store, report_path=None, trace_path=None, llm_fn=llm.chat, fetch_fn
             if not tools.job_passes(j["title"], j["location"], prefs):
                 reject_log.append((j["title"], "fails hard preference filters")); continue
             j["source"] = key
+            cand = cand_by_url.get(norm_url(j["url"]))
+            if cand:   # structured listing: the model picks and ranks, the code writes the facts
+                loc = f" ({cand['location']})" if cand["location"] else ""
+                j["summary"] = f"{cand['title']} at {cand['company']}{loc}. Listed in {feeds.get(key, 'the source listing')}."
+                j["fit"] = explain_fit(cand, prefs)
             jobs.append(j)
     else:
         for c in sorted(cands, key=lambda c: -tools.score_job(c["title"], c["location"], prefs)):
@@ -252,14 +271,14 @@ def run(cfg, store, report_path=None, trace_path=None, llm_fn=llm.chat, fetch_fn
     ranked, used_ids, used_keys = [], set(), set()
     for j in jobs:
         fp = fingerprint(j["company"], j["title"], j["location"])
-        did = by_url.get(norm_url(j["url"])) or by_key.get(fp)
+        did = (by_url.get(norm_url(j["url"])) if norm_url(j["url"]) not in feeds else None) or by_key.get(fp)
         me = j.get("matches_existing")
         if did is None and me in devs and similar(j, devs[me]) >= 0.6:   # model proposes, code verifies
             did = me
         if (did and did in used_ids) or (not did and fp in used_keys):
             continue
         used_ids.add(did) if did else used_keys.add(fp)
-        srcs = list(dict.fromkeys(([*devs[did]["sources"]] if did else []) + [j["url"]]))
+        srcs = list(dict.fromkeys(([j["source"]] if j.get("source") else []) + ([*devs[did]["sources"]] if did else []) + [j["url"]]))
         status = "still" if did in last_top else "new"
         ranked.append({"id": did, "key": devs[did]["key"] if did else fp, "title": j["title"], "company": j["company"],
                        "location": j["location"], "summary": j["summary"], "fit": j["fit"], "evidence": j["evidence"],
