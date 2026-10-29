@@ -357,6 +357,57 @@ function Hackathons() {
   );
 }
 
+// ---------- Built in NYC: everything I have made since arriving (static, no web data)
+const NYC = [
+  { group: "Hackathons", note: "Seeds sown in a weekend, built as a team.", items: [
+    { when: "Oct 2026", tag: "Hackathon", name: "LookUp NYC", img: "lookup-nyc", desc: "A walking guide that shows you exactly where to look on New York’s buildings, then plays the story behind each one.", live: "https://aegisherit.github.io/LookUp-NYC/", code: "https://github.com/AegisHerit/LookUp-NYC" },
+    { when: "Oct 2026", tag: "Money Talks 2", name: "BusyQueue", img: "busyqueue", desc: "An AI back office for small businesses: snap a vendor invoice and it becomes an editable record, with uncertain fields flagged.", live: "https://m-talks2.buddhsen-work.workers.dev/", code: "https://github.com/ssachis/BusyQueue" },
+    { when: "Sep 2026", tag: "Hackathon", name: "Signal", img: "signal", desc: "Screens a batch of resumes for hidden prompt injections and duplicate submissions, with the evidence for each.", live: "https://ssachis.github.io/signal/", code: "https://github.com/ssachis/signal" },
+  ]},
+  { group: "NYU class projects", note: "Grown slowly, over a semester.", items: [
+    { when: "Fall 2026", tag: "FOML", name: "Job tracker", here: true, desc: "This app. An agent that reads the Summer 2027 internship board, filters it in code, ranks the top K and reports what is new since the last run." },
+    { when: "Fall 2026", tag: "MS-CEI", name: "Last Commit", img: "last-commit", desc: "They leave. Their world of work stays. A design prototype that helps a new developer find their way around code whose owner has left.", live: "https://ssachis.github.io/last-commit/", code: "https://github.com/ssachis/last-commit" },
+    { when: "Fall 2026", tag: "Research", name: "FusionEdges", img: "fusionedges", desc: "Tests whether giving a coding agent a compatibility report first makes cross-repo changes safer and cheaper.", code: "https://github.com/ssachis/FusionEdges" },
+  ]},
+];
+
+function BuiltInNYC({ go }) {
+  const total = NYC.reduce((n, g) => n + g.items.length, 0);
+  return (
+    <section className="stack">
+      <div className="hero">
+        <span className="eyebrow">Sachi Singh · New York</span>
+        <h2>Built in NYC</h2>
+        <p className="why">Everything I have built since arriving in September 2026: {total} projects, from weekend hackathons to semester-long class work. Homebase is the command center that ties them together.</p>
+        <a className="source" href="https://github.com/ssachis" target="_blank" rel="noopener noreferrer"><span className="dot" /><span><b>GitHub:</b> ssachis <span className="arrow">↗</span></span></a>
+      </div>
+      {NYC.map((g) => (
+        <div key={g.group} className="block">
+          <div><h3>{g.group}</h3><p className="sub">{g.note}</p></div>
+          <div className="builds">
+            {g.items.map((it) => (
+              <article key={it.name} className={"build" + (it.here ? " here" : "")}>
+                {it.img ? <img src={`/nyc/${it.img}.jpg`} alt={`${it.name} screenshot`} loading="lazy" /> : <div className="thumb-here"><span>You are here</span></div>}
+                <div className="build-body">
+                  <span className="meta">{it.when} · {it.tag}</span>
+                  <b>{it.name}</b>
+                  <p>{it.desc}</p>
+                  <div className="links">
+                    {it.here && <button className="link" onClick={() => go("jobs")}>Open the Jobs tab →</button>}
+                    {it.live && <a href={it.live} target="_blank" rel="noopener noreferrer">Try it live ↗</a>}
+                    {it.code && <a href={it.code} target="_blank" rel="noopener noreferrer">GitHub ↗</a>}
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      ))}
+      <blockquote className="garden">“Don’t waste your time chasing butterflies. Mend your garden, and the butterflies will come to you. And even if they don’t, you will still have a beautiful garden.”<cite>Attributed to Mario Quintana</cite></blockquote>
+    </section>
+  );
+}
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [view, setView] = useState("login");
@@ -377,13 +428,13 @@ export default function App() {
   const authed = !!user;
 
   return (
-    <div className={"shell" + (authed && (view === "jobs" || view === "hackathons") ? " full" : "")}>
+    <div className={"shell" + (authed && (view === "jobs" || view === "hackathons" || view === "nyc") ? " full" : "")}>
       <aside className="brand">
         <h1>Homebase</h1>
         <FloorPlan />
         <p>One account. Everything you build next plugs into it.</p>
       </aside>
-      <main className={authed && (view === "jobs" || view === "hackathons") ? "wide" : ""}>
+      <main className={authed && (view === "jobs" || view === "hackathons" || view === "nyc") ? "wide" : ""}>
         {authed && (
           <header className="top">
             <div className="who"><span className="avatar">{user.username[0].toUpperCase()}</span><b>{user.username}</b></div>
@@ -391,6 +442,7 @@ export default function App() {
               <button className={view === "home" ? "on" : ""} onClick={() => setView("home")}>Home</button>
               <button className={view === "jobs" ? "on" : ""} onClick={() => setView("jobs")}>Jobs</button>
               <button className={view === "hackathons" ? "on" : ""} onClick={() => setView("hackathons")}>Hackathons</button>
+              <button className={view === "nyc" ? "on" : ""} onClick={() => setView("nyc")}>Built in NYC</button>
               <button className={view === "account" ? "on" : ""} onClick={() => setView("account")}>Account</button>
               <button onClick={logout}>Log out</button>
             </nav>
@@ -398,6 +450,7 @@ export default function App() {
         )}
         {!authed && <AuthForm key={view} mode={view === "register" ? "register" : "login"} onLogin={login} notice={notice} switchTo={() => setView(view === "register" ? "login" : "register")} />}
         {authed && view === "home" && <Home user={user} />}
+        {authed && view === "nyc" && <BuiltInNYC go={setView} />}
         {authed && view === "jobs" && <Jobs />}
         {authed && view === "hackathons" && <Hackathons />}
         {authed && view === "account" && <Account user={user} onUser={setUser} onDeleted={() => clear("Your account was deleted.")} />}
