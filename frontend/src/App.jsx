@@ -209,7 +209,8 @@ function JobCard({ d }) {
       <div className="jobhead"><span className="rank">{d.rank ?? "–"}</span><b>{d.title}</b><span className="co">{d.company}{d.location ? ` · ${d.location}` : ""}</span></div>
       {d.summary && <p>{d.summary}</p>}
       {d.fit && <p className="fit">Fit: {d.fit}</p>}
-      <div className="srcs">{d.sources.map((u) => <SafeLink key={u} url={u} />)}</div>
+      {d.evidence && <p className="evidence" title="Exact text the code found in the first source before accepting this job">Evidence: <q>{d.evidence}</q></p>}
+      <div className="srcs"><span className="sub">Sources (first = verified page):</span>{d.sources.map((u) => <SafeLink key={u} url={u} />)}</div>
     </li>
   );
 }
@@ -271,6 +272,7 @@ function Jobs() {
               <button className="link" onClick={() => setSel(r.id)}>{when(r.started_at)}</button>
               {r.partial && <span className="tag">partial</span>}
               <span className="sub"> {r.counts.new} new · {r.counts.still} still · {r.counts.dropped} dropped · {r.stats?.fetches ?? 0} fetches · {r.stats?.tokens ?? 0} tokens</span>
+              {r.fetch_counts && <div className="sub">Articles: {["fetched", "skipped_seen", "rejected", "error"].map((k) => `${r.fetch_counts[k] ?? 0} ${k.replace("_", " ")}`).join(" · ")}</div>}
               {r.new_titles.length > 0 && <div className="sub">New: {r.new_titles.join("; ")}</div>}
               {r.dropped_titles.length > 0 && <div className="sub">Dropped: {r.dropped_titles.join("; ")}</div>}
             </li>
@@ -284,6 +286,7 @@ function Jobs() {
           <table>
             <thead><tr><th>Title</th><th>URL</th><th>Fetched</th><th>Status</th></tr></thead>
             <tbody>
+              {fetches.length === 0 && <tr><td colSpan={4} className="sub">No articles recorded for this run.</td></tr>}
               {fetches.map((f, i) => (
                 <tr key={i}>
                   <td>{f.title || "–"}</td>

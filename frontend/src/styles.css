@@ -76,6 +76,7 @@ h4 { font-family: "Bricolage Grotesque", sans-serif; margin: 18px 0 8px; font-si
 .job { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
 .job p { margin: 6px 0 0; color: var(--ink); }
 .job .fit { color: var(--muted); font-size: .92rem; }
+.job .evidence { font-size: .85rem; font-family: ui-monospace, Menlo, monospace; background: #f3f6f5; border-left: 3px solid var(--teal2); padding: 4px 8px; border-radius: 4px; overflow-wrap: anywhere; }
 .jobhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
 .rank { background: var(--teal); color: #fff; border-radius: 6px; padding: 0 8px; font-weight: 700; font-size: .85rem; }
 .co { color: var(--muted); font-size: .92rem; }
