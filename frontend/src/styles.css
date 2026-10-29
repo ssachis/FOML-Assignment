@@ -99,3 +99,28 @@ code { background: #e6ecea; padding: 1px 6px; border-radius: 4px; }
 .shell.full { grid-template-columns: 1fr; }
 .shell.full .brand { display: none; }
 .shell.full main.wide { max-width: 1100px; }
+
+/* ---- Jobs tab: hero, source, stats, how-it-works ---- */
+.hero { background:var(--teal); color:#fff; border-radius:16px; padding:28px; display:grid; gap:14px; position:relative; overflow:hidden; }
+.hero::after { content:""; position:absolute; right:-40px; top:-40px; width:160px; height:160px; border-radius:50%; border:2px dashed var(--gold); opacity:.45; }
+.hero h2 { font-size:2.1rem; }
+.eyebrow { font-size:.75rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--gold); }
+.why { margin:0; color:#cfe1de; max-width:56ch; }
+.why b { color:#fff; }
+.source { display:inline-flex; align-items:center; gap:10px; justify-self:start; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); color:#fff; text-decoration:none; padding:8px 14px; border-radius:999px; font-size:.9rem; transition:background .15s; }
+.source:hover { background:rgba(255,255,255,.16); }
+.source .dot { width:8px; height:8px; border-radius:50%; background:var(--gold); box-shadow:0 0 0 4px rgba(240,176,58,.2); }
+.source .arrow { color:var(--gold); }
+.stats { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:4px; }
+.stats div { background:rgba(255,255,255,.07); border-radius:10px; padding:10px 12px; display:grid; }
+.stats b { font-family:"Bricolage Grotesque",sans-serif; font-size:1.4rem; line-height:1.1; }
+.stats span { font-size:.75rem; color:#a9c7c3; }
+.how { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(4,1fr); gap:8px; counter-reset:step; }
+.how li { counter-increment:step; background:var(--white); border:1px solid var(--line); border-radius:12px; padding:12px; display:grid; gap:4px; font-size:.82rem; }
+.how li::before { content:counter(step); width:22px; height:22px; border-radius:50%; background:var(--gold); color:var(--teal); font-weight:700; display:grid; place-items:center; font-size:.75rem; }
+.how b { font-size:.9rem; } .how span { color:var(--muted); }
+.pill { display:inline-block; font-size:.78rem; font-weight:600; padding:3px 10px; border-radius:999px; margin-right:4px; }
+.pill.new { background:var(--gold); color:var(--teal); }
+.pill.still { background:#d9eae6; color:var(--teal2); }
+.pill.dropped { background:#ece9e6; color:var(--muted); }
+@media (max-width:600px) { .stats, .how { grid-template-columns:repeat(2,1fr); } .hero { padding:22px; } }

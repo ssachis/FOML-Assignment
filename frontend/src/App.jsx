@@ -246,21 +246,43 @@ function Jobs() {
   const by = (s) => latest.developments.filter((d) => d.status === s);
   return (
     <section className="stack">
-      <div>
-        <h2 className="greet">Job tracker</h2>
-        <p className="sub">{latest.topic}</p>
+      <div className="hero">
+        <span className="eyebrow">Agent · Summer 2027 internships</span>
+        <h2>Job tracker</h2>
+        <p className="why">
+          The board below lists 5,000+ internships and changes daily. This agent reads it on every run, keeps only roles that pass
+          my filters, ranks the best {latest.k}, checks each claim against the source, and tells me what is <b>new</b> since last time,
+          so I apply early instead of re-scrolling the whole list.
+        </p>
+        <a className="source" href="https://github.com/SimplifyJobs/Summer2027-Internships" target="_blank" rel="noopener noreferrer">
+          <span className="dot" />
+          <span><b>Source:</b> SimplifyJobs / Summer2027-Internships <span className="arrow">↗</span></span>
+        </a>
+        <div className="stats">
+          <div><b>{latest.k}</b><span>top K tracked</span></div>
+          <div><b>{by("new").length}</b><span>new this run</span></div>
+          <div><b>{runs.length}</b><span>runs so far</span></div>
+          <div><b>{new Date(latest.finished_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</b><span>last run</span></div>
+        </div>
       </div>
+
+      <ol className="how">
+        <li><b>Fetch</b><span>Read the public feed through the URL guardrail</span></li>
+        <li><b>Filter</b><span>Code drops roles outside my titles &amp; locations</span></li>
+        <li><b>Rank &amp; verify</b><span>Model ranks, code checks every quote</span></li>
+        <li><b>Diff</b><span>Compare with last run: new · still · dropped</span></li>
+      </ol>
 
       <div className="block">
         <h3>Latest report · {when(latest.finished_at)}</h3>
         {latest.partial && <p className="warn" role="status">Partial report: {latest.partial_reason}</p>}
         {[["New since last run", by("new")], ["Still in top K", by("still")]].map(([label, rows]) => (
           <div key={label}>
-            <h4>{label} ({rows.length})</h4>
+            <h4><span className={`pill ${label.startsWith("New") ? "new" : "still"}`}>{label}</span> {rows.length}</h4>
             {rows.length ? <ol className="jobs">{rows.map((d) => <JobCard key={d.id} d={d} />)}</ol> : <p className="sub">None.</p>}
           </div>
         ))}
-        <h4>Dropped ({latest.dropped.length})</h4>
+        <h4><span className="pill dropped">Dropped</span> {latest.dropped.length}</h4>
         {latest.dropped.length ? <ul className="plain">{latest.dropped.map((d) => <li key={d.id}>{d.title}, {d.company}</li>)}</ul> : <p className="sub">None.</p>}
       </div>
 
