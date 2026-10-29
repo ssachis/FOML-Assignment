@@ -78,6 +78,7 @@ python -m tracker run --report reports/run1.md --trace traces/run1.jsonl
 
 # 3. run it again (at least a day later for the submission)
 python -m tracker run --report reports/run2.md --trace traces/run2.jsonl
+# (submitted: run 3, 3+ weeks later)  python -m tracker run --report reports/run3.md --trace traces/run3.jsonl
 
 # 4. reset its saved state
 python -m tracker reset
@@ -122,4 +123,5 @@ python -m tracker.hackathons clear                  # remove them
 This tab is a snapshot you refresh, not an autonomous agent run. It does not touch the job-tracker tables.
 
 ## Note on run timing
-`reports/run1.md` (2026-10-06 22:01 UTC) and `reports/run2.md` (2026-10-07 02:32 UTC) were produced only a few hours apart because of time constraints, not the required one day. The feed still changed between them (1 new, 7 still, 1 dropped). I will add a run at least one day later as `reports/run3.md` and `traces/run3.jsonl` and push it by October 9, 2026.
+`reports/run1.md` (2026-10-06 22:01 UTC) and `reports/run2.md` (2026-10-07 02:32 UTC) were produced only a few hours apart, not the required one day. The feed still changed between them (1 new, 7 still, 1 dropped).
+`reports/run3.md` / `traces/run3.jsonl` (2026-10-29 18:18 UTC) is a recrawl more than three weeks after run 2, using the same saved state: 7 new, 1 still in top K, 7 dropped. Compare run 2 and run 3 for the "at least a day apart" recrawl.
