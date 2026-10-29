@@ -142,3 +142,4 @@ code { background: #e6ecea; padding: 1px 6px; border-radius: 4px; }
 .build .links a:hover { text-decoration:underline; }
 .garden { margin:0; padding:22px 24px; border-left:4px solid var(--gold); background:#fffaf0; border-radius:0 12px 12px 0; font-style:italic; color:var(--teal); }
 .garden cite { display:block; margin-top:8px; font-style:normal; font-size:.82rem; color:var(--muted); }
+.srcrow { display:flex; flex-wrap:wrap; gap:8px; }

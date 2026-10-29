@@ -379,7 +379,10 @@ function BuiltInNYC({ go }) {
         <span className="eyebrow">Sachi Singh · New York</span>
         <h2>Built in NYC</h2>
         <p className="why">Everything I have built since arriving in September 2026: {total} projects, from weekend hackathons to semester-long class work. Homebase is the command center that ties them together.</p>
-        <a className="source" href="https://github.com/ssachis" target="_blank" rel="noopener noreferrer"><span className="dot" /><span><b>GitHub:</b> ssachis <span className="arrow">↗</span></span></a>
+        <div className="srcrow">
+          <a className="source" href="https://ssachis.github.io/NYC-projects/" target="_blank" rel="noopener noreferrer"><span className="dot" /><span><b>Full page:</b> All that I have built since coming to NYC <span className="arrow">↗</span></span></a>
+          <a className="source" href="https://github.com/ssachis" target="_blank" rel="noopener noreferrer"><span><b>GitHub:</b> ssachis <span className="arrow">↗</span></span></a>
+        </div>
       </div>
       {NYC.map((g) => (
         <div key={g.group} className="block">
