@@ -20,11 +20,12 @@ def chat(messages: list, tools: list, cfg: dict, log=print) -> dict:
                   "temperature": m.get("temperature", 0.1), "max_tokens": m.get("max_output_tokens", 1500)})
         if r.status_code == 400 and "tool_use_failed" in (r.text or ""):
             # malformed or disallowed tool call from the model: treat as "no call", the loop nudges it
-            return {"choices": [{"message": {"content": "", "tool_calls": []}}], "usage": {}}
+            return {"choices": [{"message": {"content": "", "tool_calls": []}}], "usage": {}, "tool_use_failed": True}
         classify_http(r, "model", cfg)
         return r.json()
 
     data = with_retry(call, cfg, "model call", log)
     u = data.get("usage") or {}
     return {"message": data["choices"][0]["message"],
-            "prompt_tokens": u.get("prompt_tokens", 0), "completion_tokens": u.get("completion_tokens", 0)}
+            "prompt_tokens": u.get("prompt_tokens", 0), "completion_tokens": u.get("completion_tokens", 0),
+            "tool_use_failed": bool(data.get("tool_use_failed"))}

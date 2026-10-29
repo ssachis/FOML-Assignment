@@ -138,7 +138,8 @@ def run(cfg, store, report_path=None, trace_path=None, llm_fn=llm.chat, fetch_fn
             stop = f"terminal failure: {e}"; flags.append("terminal"); break
         tokens += out["prompt_tokens"] + out["completion_tokens"]
         trace.log(steps, "model", cfg["model"]["name"], {"messages": len(messages)}, "ok", (time.time() - t0) * 1000,
-                  out["prompt_tokens"], out["completion_tokens"], note=f"total_tokens={tokens}")
+                  out["prompt_tokens"], out["completion_tokens"],
+                  note=f"total_tokens={tokens}" + (" tool_use_failed (provider rejected a malformed tool call; usage not reported)" if out.get("tool_use_failed") else ""))
         msg = out["message"]
         calls = msg.get("tool_calls") or []
         messages.append({"role": "assistant", "content": msg.get("content") or "", **({"tool_calls": calls} if calls else {})})

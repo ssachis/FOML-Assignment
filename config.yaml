@@ -36,7 +36,7 @@ limits:
   max_fetches: 8
   max_search_calls: 1
   max_total_tokens: 60000       # prompt + completion, summed over the run
-  max_retries: 6
+  max_retries: 3                # 2s+4s+8s of backoff, then stop: a cut network fails in ~15s, not minutes
   backoff_base_seconds: 2
   backoff_cap_seconds: 30
   fetch_timeout_seconds: 10
