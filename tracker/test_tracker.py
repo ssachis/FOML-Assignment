@@ -57,6 +57,11 @@ check("503 is transient", kind(resp(503)) == "transient")
 
 # ---- helpers
 check("norm_url strips tracking + fragment", agent.norm_url("https://A.com/jobs/1/?utm_source=x&id=2#top") == "https://a.com/jobs/1?id=2")
+check("internship filter accepts interns and rejects internal-tools roles",
+      tools.job_passes("Software Engineer Intern", "New York", cfg["preferences"])
+      and not tools.job_passes("Software Engineer, Internal Tools", "New York", cfg["preferences"]))
+# Historical recrawl fixtures exercise generic job titles.
+cfg["preferences"]["internships_only"] = False
 check("title include/exclude", tools.job_passes("Software Engineer", "New York, NY", cfg["preferences"])
       and not tools.job_passes("Staff Software Engineer", "New York", cfg["preferences"]))
 check("location filter", not tools.job_passes("Software Engineer", "Berlin", cfg["preferences"]))

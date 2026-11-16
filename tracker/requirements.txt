@@ -1,3 +1,6 @@
 requests
 pyyaml
 python-dotenv
+fastapi
+pydantic>=2
+uvicorn

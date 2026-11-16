@@ -25,6 +25,8 @@ def job_passes(title: str, location: str, prefs: dict) -> bool:
     t, loc = (title or "").lower(), (location or "").lower()
     inc = [x.lower() for x in prefs.get("titles_include", [])]
     exc = [x.lower() for x in prefs.get("titles_exclude", [])]
+    if prefs.get("internships_only") and not re.search(r"\bintern(?:ship)?s?\b", t):
+        return False
     if inc and not any(x in t for x in inc):
         return False
     if any(x in t for x in exc):
@@ -122,7 +124,7 @@ def _norm(s):
 
 
 # ---------------------------------------------------------------- fetch_article
-def fetch_article(url: str, cfg: dict, prefilter: bool = True, source_name: str = "") -> dict:
+def fetch_article(url: str, cfg: dict, prefilter: bool = True, source_name: str = "", before_request=None) -> dict:
     """Guardrails run before any request. Raises Rejected (guardrail) or Terminal/Transient (network)."""
     lim = cfg["limits"]
     timeout, max_bytes = lim["fetch_timeout_seconds"], lim["fetch_max_bytes"]
@@ -130,6 +132,8 @@ def fetch_article(url: str, cfg: dict, prefilter: bool = True, source_name: str 
 
     def once(u):
         validate_url(u, cfg)  # scheme, allowlist, DNS -> public IPs only. Nothing is requested yet.
+        if before_request is not None:
+            before_request()
         r = requests.get(u, headers={"User-Agent": UA, "Accept": "text/html,application/json;q=0.9,*/*;q=0.1"},
                          timeout=(timeout, timeout), stream=True, allow_redirects=False)
         try:  # defense against DNS rebinding: check the address we actually connected to
