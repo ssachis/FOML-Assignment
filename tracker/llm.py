@@ -14,7 +14,7 @@ def chat(messages: list, tools: list, cfg: dict, log=print) -> dict:
 
     def call():
         r = requests.post(
-            m["base_url"].rstrip("/") + "/chat/completions", timeout=60,
+            m["base_url"].rstrip("/") + "/chat/completions", timeout=m.get("timeout_seconds", 60),
             headers={"Authorization": f"Bearer {key}"},
             json={"model": m["name"], "messages": messages, "tools": tools, "tool_choice": choice,
                   "temperature": m.get("temperature", 0.1), "max_tokens": m.get("max_output_tokens", 1500)})

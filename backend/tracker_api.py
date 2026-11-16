@@ -144,6 +144,9 @@ def _run_detail(c, run):
     items = c.execute(
         f"SELECT i.rank, i.status, {_dev_cols()} FROM tracker_run_items i JOIN tracker_developments d ON d.id=i.development_id "
         "WHERE i.run_id=%s ORDER BY i.rank NULLS LAST, d.id", (run["id"],)).fetchall()
+    for item in items:
+        item["claims"] = run["stats"].get("claims", {}).get(item["key"], [])
+        item["stale"] = run["stats"].get("stale", False)
     return {**run, "developments": [i for i in items if i["status"] != "dropped"],
             "dropped": [i for i in items if i["status"] == "dropped"]}
 

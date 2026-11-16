@@ -68,3 +68,13 @@ preferences:
   keywords_boost: ["python", "agents", "llm", "new grad", "entry level", "early career"]
   keywords_avoid: ["clearance", "10+ years"]
   notes: "Early-career, prefers NYC or remote US."
+
+orchestration:
+  budget: {steps: 12, fetches: 16, tokens: 50000}
+  researcher:
+    budget: {steps: 10, fetches: 8, tokens: 40000}
+    time_budget_ms: 60000
+    startup_allowance_seconds: 10
+  verifier:
+    time_budget_ms: 60000
+    startup_allowance_seconds: 90

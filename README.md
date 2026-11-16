@@ -125,3 +125,20 @@ This tab is a snapshot you refresh, not an autonomous agent run. It does not tou
 ## Note on run timing
 `reports/run1.md` (2026-10-06 22:01 UTC) and `reports/run2.md` (2026-10-07 02:32 UTC) were produced only a few hours apart, not the required one day. The feed still changed between them (1 new, 7 still, 1 dropped).
 `reports/run3.md` / `traces/run3.jsonl` (2026-10-29 18:18 UTC) is a recrawl more than three weeks after run 2, using the same saved state: 7 new, 1 still in top K, 7 dropped. Compare run 2 and run 3 for the "at least a day apart" recrawl.
+
+## Assignment 2 orchestration
+Install `tracker/requirements.txt` and set distinct `RESEARCHER_TOKEN` and
+`VERIFIER_TOKEN` values in the root `.env`. Run each service separately from
+the repository root:
+
+```sh
+python -m uvicorn orchestration.researcher:app --port 4001
+python -m uvicorn orchestration.verifier:app --port 4002
+python -m orchestration.orchestrator
+```
+
+The orchestrator uses the existing A1 account and backend. For a Render verifier,
+install with `pip install -r tracker/requirements.txt`, start with
+`python -m uvicorn orchestration.verifier:app --host 0.0.0.0 --port "$PORT"`,
+and set `VERIFIER_TOKEN` in the service environment. Set the orchestrator's
+`VERIFIER_URL` to the Render service URL.
