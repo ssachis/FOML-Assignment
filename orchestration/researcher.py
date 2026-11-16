@@ -3,11 +3,13 @@
 from tempfile import TemporaryDirectory
 from time import monotonic
 
-from tracker import agent, tools
+from tracker import agent, llm, tools
 from tracker.config import env, load_config
+from tracker.errors import Terminal
 from tracker.guardrails import Rejected
 
 from .contract import Envelope, Research
+from .telemetry import trace
 from .worker import worker_app
 
 
@@ -39,18 +41,32 @@ def research(envelope, deadline):
     def fetch(url, config, **kwargs):
         config["limits"]["fetch_timeout_seconds"] = min(
             config["limits"]["fetch_timeout_seconds"], max(0.001, deadline - monotonic()))
-        return tools.fetch_article(url, config, before_request=count_fetch, **kwargs)
+        started = monotonic()
+        status = "failed"
+        try:
+            page = tools.fetch_article(url, config, before_request=count_fetch, **kwargs)
+            status = "ok"
+            return page
+        finally:
+            trace("researcher", "out", "fetch_article", status, started,
+                  run_id=envelope.run_id, request_id=envelope.request_id)
 
     def chat(messages, schemas, config, log):
-        from tracker import llm
-        from tracker.errors import Terminal
         if monotonic() >= deadline:
             raise Terminal("Researcher time budget exhausted")
         config["model"]["timeout_seconds"] = max(0.001, deadline - monotonic())
+        started = monotonic()
+        status, tokens = "failed", 0
         try:
-            return llm.chat(messages, schemas, config, log)
+            response = llm.chat(messages, schemas, config, log)
+            tokens = response["prompt_tokens"] + response["completion_tokens"]
+            status = "ok"
+            return response
         except llm.requests.RequestException as exc:
             raise Terminal("Research model connection failed") from exc
+        finally:
+            trace("researcher", "out", "model", status, started, tokens=tokens,
+                  run_id=envelope.run_id, request_id=envelope.request_id)
 
     with TemporaryDirectory() as directory:
         run = agent.run(cfg, RunMemory(), trace_path=f"{directory}/research.jsonl",

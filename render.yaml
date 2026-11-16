@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: foml-verifier
+    runtime: python
+    plan: free
+    buildCommand: pip install -r tracker/requirements.txt
+    startCommand: python -m uvicorn orchestration.verifier:app --host 0.0.0.0 --port "$PORT"
+    healthCheckPath: /healthz
+    envVars:
+      - key: VERIFIER_TOKEN
+        sync: false

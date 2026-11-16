@@ -11,11 +11,26 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 
+from .telemetry import trace
+
 
 def worker_app(path, token_env, schema, execute):
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
     requests = {}
     lock = Lock()
+
+    service = token_env.removesuffix("_TOKEN").lower()
+
+    @app.middleware("http")
+    async def log_request(request, call_next):
+        started = monotonic()
+        response = await call_next(request)
+        envelope = getattr(request.state, "envelope", None)
+        trace(service, "in", path if request.url.path == path else "/healthz",
+              response.status_code, started,
+              run_id=envelope.run_id if envelope else None,
+              request_id=envelope.request_id if envelope else None)
+        return response
 
     @app.get("/healthz")
     def health():
@@ -34,6 +49,7 @@ def worker_app(path, token_env, schema, execute):
         except (ValueError, ValidationError):
             return JSONResponse({"error": "invalid request"}, status_code=400)
 
+        request.state.envelope = envelope
         canonical = json.dumps(body, sort_keys=True, separators=(",", ":"))
         request_id = envelope.request_id
         with lock:

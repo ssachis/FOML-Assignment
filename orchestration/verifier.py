@@ -12,6 +12,7 @@ from tracker.tools import fetch_article
 
 from .contract import Envelope, Verify
 from .evidence import checked_evidence
+from .telemetry import trace
 from .worker import worker_app
 
 
@@ -42,12 +43,19 @@ def verify(envelope, deadline, fetch=fetch_article):
                 cfg["limits"]["fetch_timeout_seconds"] = min(
                     cfg["limits"]["fetch_timeout_seconds"], remaining
                 )
+                started = monotonic()
+                fetch_status = "stopped"
                 try:
                     page = fetch(claim.source_url, cfg, prefilter=False,
                                  before_request=count_request)
                     pages[claim.source_url] = page["text"]
+                    fetch_status = "ok"
                 except (Rejected, Terminal, Transient, requests.RequestException):
                     pages[claim.source_url] = None
+                    fetch_status = "unreachable"
+                finally:
+                    trace("verifier", "out", "fetch_article", fetch_status, started,
+                          run_id=envelope.run_id, request_id=envelope.request_id)
             if monotonic() >= deadline:
                 raise BudgetExhausted("time_budget_exhausted")
         except BudgetExhausted as exc:
