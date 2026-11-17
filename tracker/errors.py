@@ -11,6 +11,10 @@ class Transient(Exception):
         self.retry_after = retry_after
 
 
+class BudgetStop(Exception):
+    """Stop early and report the evidence collected so far."""
+
+
 class Terminal(Exception):
     """Do not retry: bad key, exhausted daily quota, payment required, bad request."""
 

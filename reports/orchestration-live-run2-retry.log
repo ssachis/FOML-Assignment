@@ -1,0 +1,39 @@
+/Users/sachisingh/Downloads/nyu-a1/.venv-tracker/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+{"ts": "2026-11-17T02:20:25.195100+00:00", "service": "orchestrator", "run_id": "61d7258d-bf27-430b-a60a-9db2f03b73a6", "request_id": "6ea517a2-2cbd-4ae0-85bb-d278cfc2bbde", "step": "researcher", "direction": "out", "endpoint_or_tool": "researcher", "status": 200, "latency_ms": 5715, "attempt": 1, "tokens": 0}
+{"ts": "2026-11-17T02:20:28.149747+00:00", "service": "orchestrator", "run_id": "61d7258d-bf27-430b-a60a-9db2f03b73a6", "request_id": "02e1c724-a548-43ae-aa11-74975615789b", "step": "verifier", "direction": "out", "endpoint_or_tool": "verifier", "status": 200, "latency_ms": 2953, "attempt": 1, "tokens": 0}
+# New Summer 2027 tech internships that match my preferences
+
+Complete run
+
+## 1. Machine Learning Engineer Intern
+- supported — Bask Health | Machine Learning Engineer Intern | Remote in USA (https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/.github/scripts/listings.json)
+  Evidence: Bask Health | Machine Learning Engineer Intern | Remote in USA
+
+## 2. Machine Learning Engineer Intern
+- supported — Riot Games | Machine Learning Engineer Intern | Remote in USA (https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/.github/scripts/listings.json)
+  Evidence: Riot Games | Machine Learning Engineer Intern | Remote in USA
+
+## 3. AI/ML Engineer Intern
+- supported — Intermountain Healthcare | AI/ML Engineer Intern | Remote in USA (https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/.github/scripts/listings.json)
+  Evidence: Intermountain Healthcare | AI/ML Engineer Intern | Remote in USA
+
+## 4. Year-Round Graduate Internship - AI/Machine Learning Time Series Modeling
+- supported — National Laboratory of the Rockies | Year-Round Graduate Internship - AI/Machine Learning Time Series Modeling | Remote in USA (https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/.github/scripts/listings.json)
+  Evidence: National Laboratory of the Rockies | Year-Round Graduate Internship - AI/Machine Learning Time Series Modeling | Remote in USA
+
+## 5. Backend Engineer Intern - Backend Engineering
+- supported — Bask Health | Backend Engineer Intern - Backend Engineering | Remote in USA (https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/.github/scripts/listings.json)
+  Evidence: Bask Health | Backend Engineer Intern - Backend Engineering | Remote in USA
+
+## 6. Software Engineer Intern - AWS Database
+- supported — Amazon | Software Engineer Intern - AWS Database | United States (https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/.github/scripts/listings.json)
+  Evidence: Amazon | Software Engineer Intern - AWS Database | United States
+
+## 7. Software Engineer Intern
+- supported — Amplify | Software Engineer Intern | Remote in USA (https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/.github/scripts/listings.json)
+  Evidence: Amplify | Software Engineer Intern | Remote in USA
+
+## 8. Software Engineering Intern
+- supported — Wikimedia Foundation | Software Engineering Intern | Remote in USA (https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/.github/scripts/listings.json)
+  Evidence: Wikimedia Foundation | Software Engineering Intern | Remote in USA

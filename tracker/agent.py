@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from urllib.parse import urlparse, urlunparse, parse_qsl, urlencode
 
 from . import llm, tools
-from .errors import Terminal, with_retry
+from .errors import BudgetStop, Terminal, with_retry
 from .guardrails import Rejected
 from .trace import Trace
 
@@ -133,6 +133,10 @@ def run(cfg, store, report_path=None, trace_path=None, llm_fn=llm.chat, fetch_fn
             messages.append({"role": "user", "content": "Budget nearly spent. Call finish(report) now with the best jobs you have."})
         try:
             out = llm_fn(compact(messages, cands), [tools.TOOL_SCHEMAS[t] for t in tool_list], cfg, log)
+        except BudgetStop as e:
+            steps -= 1
+            stop = str(e)
+            break
         except Terminal as e:
             trace.log(steps, "model", cfg["model"]["name"], {}, "terminal", (time.time() - t0) * 1000, note=str(e)[:160])
             stop = f"terminal failure: {e}"; flags.append("terminal"); break

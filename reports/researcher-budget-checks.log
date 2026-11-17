@@ -1,0 +1,10 @@
+Loaded state: 0 URLs seen, 0 developments, last top-K = 0
+
+Done (PARTIAL: Researcher time budget exhausted): 0 new, 0 still, 0 dropped. steps=0 fetches=0 tokens=0
+{"ts": "2026-11-17T03:07:06.352110+00:00", "service": "researcher", "run_id": "305e6f71-1c92-4bb1-919f-f5da6292d1d3", "request_id": "6ba84ae9-4c92-4e32-8f2a-568e404ac01a", "step": "/research", "direction": "in", "endpoint_or_tool": "/research", "status": 200, "latency_ms": 9, "attempt": 1, "tokens": 0}
+PASS time_budget_ms=1 max_tokens=8000: HTTP 200 partial, zero usage
+Loaded state: 0 URLs seen, 0 developments, last top-K = 0
+
+Done (PARTIAL: Researcher token budget exhausted): 0 new, 0 still, 0 dropped. steps=0 fetches=0 tokens=0
+{"ts": "2026-11-17T03:07:06.357620+00:00", "service": "researcher", "run_id": "1fdb5636-58f0-41fd-a656-44d8064daad8", "request_id": "fd97a2e3-0d22-4b48-9d4c-7f6da3673d46", "step": "/research", "direction": "in", "endpoint_or_tool": "/research", "status": 200, "latency_ms": 5, "attempt": 1, "tokens": 0}
+PASS time_budget_ms=30000 max_tokens=1: HTTP 200 partial, zero usage

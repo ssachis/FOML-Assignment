@@ -1,11 +1,12 @@
 """Run the existing tracker without access to persisted account state."""
 
+import json
 from tempfile import TemporaryDirectory
 from time import monotonic
 
 from tracker import agent, llm, tools
 from tracker.config import env, load_config
-from tracker.errors import Terminal
+from tracker.errors import BudgetStop, Terminal
 from tracker.guardrails import Rejected
 
 from .contract import Envelope, Research
@@ -30,7 +31,8 @@ def research(envelope, deadline):
     budget = envelope.budget
     cfg["limits"].update(max_steps=budget.max_steps, max_fetches=budget.max_fetches,
                          max_total_tokens=budget.max_tokens, max_retries=0, max_search_calls=0)
-    fetches = 0
+    fetches = total_tokens = 0
+    cfg_output_limit = cfg["model"].get("max_output_tokens", 1500)
 
     def count_fetch():
         nonlocal fetches
@@ -52,14 +54,22 @@ def research(envelope, deadline):
                   run_id=envelope.run_id, request_id=envelope.request_id)
 
     def chat(messages, schemas, config, log):
+        nonlocal total_tokens
         if monotonic() >= deadline:
-            raise Terminal("Researcher time budget exhausted")
+            raise BudgetStop("Researcher time budget exhausted")
+        # Reserve one token per serialized byte plus space for provider framing.
+        prompt_reserve = len(json.dumps([messages, schemas], ensure_ascii=False).encode("utf-8")) + 1024
+        available = budget.max_tokens - total_tokens - prompt_reserve
+        if available < 1:
+            raise BudgetStop("Researcher token budget exhausted")
+        config["model"]["max_output_tokens"] = min(cfg_output_limit, available)
         config["model"]["timeout_seconds"] = max(0.001, deadline - monotonic())
         started = monotonic()
         status, tokens = "failed", 0
         try:
             response = llm.chat(messages, schemas, config, log)
             tokens = response["prompt_tokens"] + response["completion_tokens"]
+            total_tokens += tokens
             status = "ok"
             return response
         except llm.requests.RequestException as exc:

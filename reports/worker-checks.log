@@ -1,0 +1,20 @@
+/Users/sachisingh/Downloads/nyu-a1/.venv-tracker/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+
+Verifier in-flight request ID: 2aaaaf75-5fd5-48f7-935a-f2f4859f2af6
+Verifier in-flight statuses: [200, 503], Retry-After: ['1']
+
+Verifier blocked URL request ID: f64afb77-81a4-4f9f-ba32-e909b94a5bfd
+Verifier blocked URL: HTTP 200
+Verdicts: [('loopback-test', 'unreachable')]
+Fetches charged: 0
+Verifier tiny deadline: HTTP 200, status=partial (expect 200/partial)
+Researcher Missing token: 401 (expect 401)
+Researcher Wrong token: 401 (expect 401)
+Researcher Invalid body with valid token: 400 (expect 400)
+Researcher tiny deadline: HTTP 500, status=failed (expect 200/partial)
+
+Researcher in-flight request ID: eae66234-12af-4574-a820-e37d66a1a061
+Researcher in-flight statuses: [200, 503], Retry-After: ['1']
+Researcher completed duplicate: 200 identical: True
+Researcher changed body, same ID: 409 (expect 409)
