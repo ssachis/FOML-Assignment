@@ -51,10 +51,6 @@ guardrails:
 
 # ---- YOUR SOURCES: replace these with the places you are allowed to fetch jobs from ----
 sources:
-  - name: Datadog
-    url: https://boards-api.greenhouse.io/v1/boards/datadog/jobs
-  - name: Duolingo
-    url: https://boards-api.greenhouse.io/v1/boards/duolingo/jobs
   - name: SimplifyJobs Summer 2027 internships
     url: https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/.github/scripts/listings.json
 
@@ -72,7 +68,7 @@ preferences:
 orchestration:
   budget: {steps: 12, fetches: 16, tokens: 50000}
   researcher:
-    budget: {steps: 10, fetches: 8, tokens: 40000}
+    budget: {steps: 4, fetches: 8, tokens: 40000}
     time_budget_ms: 60000
     startup_allowance_seconds: 10
   verifier:
